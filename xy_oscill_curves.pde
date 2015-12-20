@@ -29,7 +29,7 @@ color dc = color(150);
 boolean xyMode = true;
 boolean xPhaseShift = false;
 boolean yPhaseShift = false;
-float phaseShift = .001;
+float phaseShift = .01;
 
 int cSize = 8;
 
@@ -47,7 +47,7 @@ Wavetable[] waveTables = {
 };
 
 void setup() {
-  size(900, 600);
+  size(1024, 600);
   //size(displayWidth,displayHeight);
   o = border;
   w = width-o;
@@ -92,7 +92,7 @@ void setupControls() {
   
   
   cp5.addTextlabel("GRID")
-                    .setText("_FREQ RANGE")
+                    .setText("RANGE")
                     .setPosition(h+o, o*1.3)
                     .setColorValue(color(255))
                     .setFont(font)
@@ -120,18 +120,26 @@ void setupControls() {
   fmaxt.setValue(nf(freqMax, 1, 0));
   
   
-  int freqOffset = int(o*5);
+  int freqOffset = int(o*4.75);
 
-  cp5.addTextlabel("WAVES")
-                    .setText("_WAVES")
-                    .setPosition(h+o, freqOffset-o*.25)
+  cp5.addTextlabel("X")
+                    .setText("X")
+                    .setPosition(h+o, freqOffset)
                     .setColorValue(color(255))
                     .setFont(font)
                     ;
+    cp5.addTextlabel("Y")
+                    .setText("Y")
+                    .setPosition(h+o*2+tw, freqOffset)
+                    .setColorValue(color(255))
+                    .setFont(font)
+                    ;                  
+                    
+ 
   
 
   xtf = cp5.addTextfield("xfreqt")
-    .setPosition(h+o, freqOffset+o*2.5)
+    .setPosition(h+o, freqOffset+o*2)
       .setSize(tw, 20)
         .setFont(font)
           .setAutoClear(false)
@@ -167,13 +175,20 @@ void setupControls() {
 
 
   ytf = cp5.addTextfield("yfreqt")
-    .setPosition(h+o*2+tw, freqOffset+o*2.5)
+    .setPosition(h+o*2+tw, freqOffset+o*2)
       .setSize(tw, 20)
         .setFont(font)
           .setAutoClear(false)
             .setLabel("y - frequency")
               ;
   ytf.setValue(nf(yfreq, 2, 2));
+  
+  cp5.addToggle("xyMode")
+    .setPosition(h+o*2+tw, freqOffset+o*4.5)
+      .setSize(20, 20)
+      .setLabel("xy mode")
+        ;
+        
 
 /*
   ytp = cp5.addTextfield("yphaset")
@@ -194,14 +209,14 @@ void setupControls() {
 
   // WAVE TABLE
   xd = cp5.addDropdownList("xwaved")
-    .setPosition(h+o, freqOffset+o*2)
+    .setPosition(h+o, freqOffset+o*1.75)
       .setSize(tw, 200);
 
       ;
   dropdownWave(xd);
 
   yd = cp5.addDropdownList("ywaved")
-    .setPosition(h+o*2+tw, freqOffset+o*2)
+    .setPosition(h+o*2+tw, freqOffset+o*1.75)
       .setSize(tw, 200);
 
       ;
@@ -224,9 +239,11 @@ void controlEvent(ControlEvent theEvent) {
   println(theEvent.getName());
   if (theEvent.getName() == "xfreqt") {
     xfreq = float(xtf.getStringValue());
+    xtf.setFocus(false);
     updateFreq();
   } else if (theEvent.getName() == "yfreqt") {
     yfreq = float(ytf.getStringValue());
+    ytf.setFocus(false);
     updateFreq();
   } else if (theEvent.getName() == "xwaved") {
     xwave.setWaveform( waveTables[int(theEvent.getValue())] );
@@ -234,14 +251,17 @@ void controlEvent(ControlEvent theEvent) {
     ywave.setWaveform( waveTables[int(theEvent.getValue())] );
   } else if (theEvent.getName() == "xphaset") {
     xphase = int(xtp.getStringValue());
+    xtp.setFocus(false);
     updatePhase();
   } else if (theEvent.getName() == "yphaset") {
     yphase = float(ytp.getStringValue())/360;
     updatePhase();
   }else if (theEvent.getName() == "fmint") {
     freqMin = int(fmint.getStringValue());
+    fmint.setFocus(false);
   }else if (theEvent.getName() == "fmaxt") {
     freqMax = int(fmaxt.getStringValue());
+    fmaxt.setFocus(false);
   }
   /*
   if(theEvent.isAssignableFrom(Textfield.class)) {
@@ -279,20 +299,38 @@ void showGrid() {
 
     text(int(i)+"Hz", x+3, o+15);
     line(x, o, x, h);
+    
 
     // channel 2
     line(o, y, h, y);
     pushMatrix();
-    translate(o+5, y+3);
+    translate(o+10, y+3);
     rotate(radians(90));
     fill(yc);
     if (xyMode)
       fill(dc);
     text(int(i)+"Hz", 0, 0);
+    
     popMatrix();
   }
   line(h, o, h, h);
   line(o, h, h, h);
+  
+  fill(xc);
+    if (xyMode)
+      fill(dc);
+  text("x - frequency", h/2, o*.5);
+  
+  fill(yc);
+  if (xyMode)
+      fill(dc);
+      
+      pushMatrix();
+      translate(o+5, 0);
+      rotate(radians(90));
+      text("y - frequency", h/2, o*.5);
+      popMatrix();
+  
 }
 
 void showFreq() {
@@ -313,7 +351,7 @@ void showFreq() {
 }
 
 void showScope() {
-  float amp = w*.30;
+  float amp = h*.40;
   stroke(255);
   noFill();
   //line(mouseX,mouseY,pmouseX,pmouseY);
