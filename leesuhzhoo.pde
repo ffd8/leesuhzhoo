@@ -1,4 +1,4 @@
-/*  xy_oscill_curves v.01
+/*  leesuhzhoo v.01
  cc teddavis.org 2015 */
 
 import ddf.minim.*;
