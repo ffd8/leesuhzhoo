@@ -4,6 +4,7 @@
 import ddf.minim.*;
 import ddf.minim.ugens.*;
 import ddf.minim.signals.Oscillator;
+import java.util.*;
 
 Minim minim;
 AudioOutput out;
@@ -48,13 +49,12 @@ int cSize = 8;
 import controlP5.*;
 ControlP5 cp5;
 Textfield xtf, ytf, xtp, ytp, fmint, fmaxt;
-DropdownList xd, yd, dSettings;
+ScrollableList xd, yd, dSettings;
+//DropdownList dSettings;
 Toggle tphase, tscope, txy, tglow;
 Button bLoad, bSave;
 Numberbox ps;
-String[] waveTypes = {
-  "SINE", "SQUARE", "TRIANGLE", "SAW", "QUARTERPULSE"
-};
+List waveTypesList = Arrays.asList("SINE", "SQUARE", "TRIANGLE", "SAW", "QUARTERPULSE");
 Wavetable[] waveTables = {
   Waves.SINE, Waves.SQUARE, Waves.TRIANGLE, Waves.SAW, Waves.QUARTERPULSE
 };
@@ -92,8 +92,14 @@ void setup() {
   xwave.setFrequency(xfreq);
   ywave.setFrequency(yfreq);
   amp = h*.20;
+  resetWaves();
   setupControls();
   scope = createGraphics(int(g), int(g));
+}
+
+void resetWaves(){
+  xwave.reset();
+  ywave.reset();
 }
 
 void draw() {
@@ -133,13 +139,13 @@ void setupControls() {
             ;
   bSave = cp5.addButton("saveSettings")
     .setPosition(h+o, settingsOffset+o)
-      .setSize(30, 20)
+      .setSize(45, 20)
         .setLabel("save")
           ;
 
   bLoad = cp5.addButton("loadSettings")
-    .setPosition(h+o*2.5, settingsOffset+o)
-      .setSize(30, 20)
+    .setPosition(h+o*2+30, settingsOffset+o)
+      .setSize(45, 20)
         .setLabel("load")
           ;
 
@@ -155,7 +161,6 @@ void setupControls() {
   fmint = cp5.addTextfield("fmint")
     .setPosition(h+o, gridOffset+o)
       .setSize(45, 20)
-        .setFont(font)
           .setAutoClear(false)
             .setLabel("min")
               ;
@@ -164,7 +169,6 @@ void setupControls() {
   fmaxt = cp5.addTextfield("fmaxt")
     .setPosition(h+o*2+30, gridOffset+o)
       .setSize(45, 20)
-        .setFont(font)
           .setAutoClear(false)
             .setLabel("max")
               ;
@@ -181,17 +185,17 @@ void setupControls() {
   tscope = cp5.addToggle("displayScope")
     .setPosition(h+o*2+tw, gridOffset+o)
       .setSize(20, 20)
-        .setLabel("display")
+        .setLabel("show")
           ;
 
   txy = cp5.addToggle("xyMode")
-    .setPosition(h+o*2+tw*1.5, gridOffset+o)
+    .setPosition(h+o*2+tw*1.4, gridOffset+o)
       .setSize(20, 20)
         .setLabel("xy")
           ;
 
   tglow = cp5.addToggle("glowScope")
-    .setPosition(h+o*2+tw*2, gridOffset+o)
+    .setPosition(h+o*2+tw*1.8, gridOffset+o)
       .setSize(20, 20)
         .setLabel("glow")
           ;
@@ -216,7 +220,6 @@ void setupControls() {
   xtf = cp5.addTextfield("xfreqt")
     .setPosition(h+o, freqOffset+o*2)
       .setSize(tw, 20)
-        .setFont(font)
           .setAutoClear(false)
             .setLabel("frequency")
               ;
@@ -236,7 +239,6 @@ void setupControls() {
   xtp = cp5.addTextfield("xphaset")
     .setPosition(h+o, phaseOffset+o)
       .setSize(int(tw*.25), 20)
-        .setFont(font)
           .setAutoClear(false)
             .setLabel("phase")
               ;
@@ -263,7 +265,6 @@ void setupControls() {
   ytf = cp5.addTextfield("yfreqt")
     .setPosition(h+o*2+tw, freqOffset+o*2)
       .setSize(tw, 20)
-        .setFont(font)
           .setAutoClear(false)
             .setLabel("frequency")
               ;
@@ -291,45 +292,44 @@ void setupControls() {
 
 
   // WAVE TABLE
-  xd = cp5.addDropdownList("xwaved")
-    .setPosition(h+o, freqOffset+o*1.75)
+  xd = cp5.addScrollableList("xwaved")
+    .setPosition(h+o, freqOffset+o)
       .setSize(tw, 200);
 
   ;
-  dropdownWave(xd);
+  dropdownWaveList(xd);
 
-  yd = cp5.addDropdownList("ywaved")
-    .setPosition(h+o*2+tw, freqOffset+o*1.75)
+  yd = cp5.addScrollableList("ywaved")
+    .setPosition(h+o*2+tw, freqOffset+o)
       .setSize(tw, 200);
 
   ;
-  dropdownWave(yd);
+  dropdownWaveList(yd);
 
   //settings dropdown
-  dSettings = cp5.addDropdownList("dSettings")
-    .setPosition(h+o*2+tw, settingsOffset+o*1.9)
+  dSettings = cp5.addScrollableList("dSettings")
+    .setPosition(h+o*2+tw, settingsOffset+o)
       .setSize(tw, 200)
         .setBarHeight(20)
           .setItemHeight(20)
             .setLabel("Settings")
               .setVisible(false)
                 ;
-  dSettings.captionLabel().style().marginTop = 5;
   dSettings.setColorActive(color(255, 128));
   dSettings.setBackgroundColor(color(190));
 }
 
-void dropdownWave(DropdownList ddl) {
+void dropdownWaveList(ScrollableList ddl){
   ddl.setBackgroundColor(color(190));
   //ddl.setColorBackground(color(60));
   ddl.setColorActive(color(255, 128));
   //ddl.captionLabel().set("Wave Type");
-  ddl.captionLabel().style().marginTop = 5;
   ddl.setBarHeight(20);
   ddl.setItemHeight(20);
-  ddl.addItems(waveTypes);
+  ddl.addItems(waveTypesList);
   ddl.setValue(0);
 }
+
 
 void controlEvent(ControlEvent theEvent) {
   println(theEvent.getName());
@@ -449,11 +449,6 @@ void updateSettings() {
     dSettings.setValue(dMatch);
     cp5.setBroadcast(true);
   }
-}
-
-public void mouseWheelMoved(java.awt.event.MouseWheelEvent e) {
-  super.mouseWheelMoved(e);
-  cp5.setMouseWheelRotation(e.getWheelRotation());
 }
 
 void showCursor() {
@@ -741,4 +736,3 @@ void cycleInputs() {
     selInput = 0;
   }
 }
-
