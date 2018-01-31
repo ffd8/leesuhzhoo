@@ -15,17 +15,18 @@ Pan ypan = new Pan(1);
 float xfreq = 80;
 float yfreq  = 80;
 float xphase = 90;
-float yphase = 30;
+float yphase = 00;
 float amp;
 // keep track of the current Frequency so we can display it
 Frequency  currentFreq;
 
 float freqMin = 20;
 float freqMax = 440;
-float freqMod = .25;
+float freqMod = .01;
 float freqDotSize = 20;
 float border = 25;
 float o, w, h, g;
+boolean changeFreq = false;
 
 
 color xc = color(225, 0, 0);
@@ -39,9 +40,10 @@ PGraphics scope;
 boolean displayScope = true;
 boolean glowScope = true;
 boolean xyMode = true;
-boolean xPhaseSweep = false;
-boolean yPhaseSweep = false;
-float xphaseShift = .01;
+boolean xPhaseSweep = true;
+boolean yPhaseSweep = true;
+float xphaseShift = .00;
+float yphaseShift = .00;
 
 int cSize = 8;
 
@@ -50,14 +52,14 @@ import controlP5.*;
 ControlP5 cp5;
 Textfield xtf, ytf, xtp, ytp, fmint, fmaxt;
 ScrollableList xd, yd, dSettings;
-//DropdownList dSettings;
 Toggle tphase, tscope, txy, tglow;
 Button bLoad, bSave;
-Numberbox ps;
+Numberbox xps, yps;
 List waveTypesList = Arrays.asList("SINE", "SQUARE", "TRIANGLE", "SAW", "QUARTERPULSE");
 Wavetable[] waveTables = {
   Waves.SINE, Waves.SQUARE, Waves.TRIANGLE, Waves.SAW, Waves.QUARTERPULSE
 };
+boolean shifted = false;
 
 //settings
 String settingsDir, psettingsDir;
@@ -66,17 +68,17 @@ String curSetting;
 int dMatch = 0;
 
 void setup() {
-  size(900, 600);
-  //size(displayWidth,displayHeight);
+  //size(900, 600);
+  fullScreen();
   o = border;
   w = width-o;
   h = height-o;
-  g = w-h-o*2;
+  g = floor(width*.3);
+  println(g);
   minim = new Minim(this);
 
 
   out = minim.getLineOut(Minim.STEREO, 1024);
-  //outp = out;
   outxp = new float[out.bufferSize()];
   outyp = new float[out.bufferSize()];
 
@@ -86,18 +88,17 @@ void setup() {
   ywave.patch(ypan).patch(out);
 
   lwave = new Oscil( 0.01, 1, Waves.SINE );  
-  //lwave.patch(ywave.phase);
   //  xfreq = int(random(freqMin, freqMax));
   //  yfreq = int(random(freqMin, freqMax));
   xwave.setFrequency(xfreq);
   ywave.setFrequency(yfreq);
-  amp = h*.20;
+  amp = g*.48;
   resetWaves();
   setupControls();
   scope = createGraphics(int(g), int(g));
 }
 
-void resetWaves(){
+void resetWaves() {
   xwave.reset();
   ywave.reset();
 }
@@ -108,15 +109,21 @@ void draw() {
   showFreq();
   if (displayScope)
     showScope();
-  if (xPhaseSweep || yPhaseSweep) {
-    if (xPhaseSweep) {
+  if (!xtp.isFocus() && !ytp.isFocus()) {
+    if (xphaseShift > 0) {
       xphase += xphaseShift;
       if (xphase >360)
         xphase = 0;
+      updatePhase();
     }
-    updatePhase();
+
+    if (yphaseShift > 0) {
+      yphase += yphaseShift;
+      if (yphase >360)
+        yphase = 0;
+      updatePhase();
+    }
   }
-  //ywave.setPhase(map(constrain(xphase, 0, 360), 0, 360, 0, 1));
   liveUpdates();
 }
 
@@ -127,78 +134,79 @@ void setupControls() {
   PFont font = createFont("Monaco", 14);
   PFont labelFont = createFont("Monaco", 20);
 
-  int tw = 100; // w*.15;
+  int tw = 100; 
 
   // SETTINGS
   int settingsOffset = int(o);
   cp5.addTextlabel("SETTINGS")
     .setText("SETTINGS")
-      .setPosition(h+o/2, settingsOffset)
-        .setColorValue(color(255))
-          .setFont(font)
-            ;
+    .setPosition(h+o/2, settingsOffset)
+    .setColorValue(color(255))
+    .setFont(font)
+    ;
   bSave = cp5.addButton("saveSettings")
     .setPosition(h+o, settingsOffset+o)
-      .setSize(45, 20)
-        .setLabel("save")
-          ;
+    .setSize(45, 20)
+    .setLabel("save")
+    ;
 
   bLoad = cp5.addButton("loadSettings")
     .setPosition(h+o*2+30, settingsOffset+o)
-      .setSize(45, 20)
-        .setLabel("load")
-          ;
+    .setSize(45, 20)
+    .setLabel("load")
+    ;
 
   int gridOffset = int(o*3);
 
   cp5.addTextlabel("GRID")
     .setText("RANGE")
-      .setPosition(h+o/2, gridOffset)
-        .setColorValue(color(255))
-          .setFont(font)
-            ;
+    .setPosition(h+o/2, gridOffset)
+    .setColorValue(color(255))
+    .setFont(font)
+    ;
 
   fmint = cp5.addTextfield("fmint")
     .setPosition(h+o, gridOffset+o)
-      .setSize(45, 20)
-          .setAutoClear(false)
-            .setLabel("min")
-              ;
+    .setSize(45, 20)
+    .setAutoClear(false)
+    .setLabel("min")
+    ;
   fmint.setValue(nf(freqMin, 1, 0));
 
   fmaxt = cp5.addTextfield("fmaxt")
     .setPosition(h+o*2+30, gridOffset+o)
-      .setSize(45, 20)
-          .setAutoClear(false)
-            .setLabel("max")
-              ;
+    .setSize(45, 20)
+    .setAutoClear(false)
+    .setLabel("max")
+    ;
   fmaxt.setValue(nf(freqMax, 1, 0));
 
-// SCOPE
+  // SCOPE
   cp5.addTextlabel("SCOPE")
     .setText("SCOPE")
-      .setPosition(h+(o/2*3)+tw, gridOffset)
-        .setColorValue(color(255))
-          .setFont(font)
-            ;
+    .setPosition(h+(o/2*3)+tw, gridOffset)
+    .setColorValue(color(255))
+    .setFont(font)
+    ;
 
   tscope = cp5.addToggle("displayScope")
     .setPosition(h+o*2+tw, gridOffset+o)
-      .setSize(20, 20)
-        .setLabel("show")
-          ;
+    .setSize(20, 20)
+    .setLabel("show")
+    ;
 
   txy = cp5.addToggle("xyMode")
     .setPosition(h+o*2+tw*1.4, gridOffset+o)
-      .setSize(20, 20)
-        .setLabel("xy")
-          ;
+    .setSize(20, 20)
+    .setLabel("xy-Mode")
+    ;
 
   tglow = cp5.addToggle("glowScope")
     .setPosition(h+o*2+tw*1.8, gridOffset+o)
-      .setSize(20, 20)
-        .setLabel("glow")
-          ;
+    .setSize(20, 20)
+    .setLabel("glow")
+    .setVisible(false)
+    ;
 
 
 
@@ -206,23 +214,23 @@ void setupControls() {
 
   cp5.addTextlabel("X")
     .setText("X")
-      .setPosition(h+o/2, freqOffset)
-        .setColorValue(color(255))
-          .setFont(font)
-            ;
+    .setPosition(h+o/2, freqOffset)
+    .setColorValue(color(255))
+    .setFont(font)
+    ;
   cp5.addTextlabel("Y")
     .setText("Y")
-      .setPosition(h+(o/2*3)+tw, freqOffset)
-        .setColorValue(color(255))
-          .setFont(font)
-            ;                  
+    .setPosition(h+(o/2*3)+tw, freqOffset)
+    .setColorValue(color(255))
+    .setFont(font)
+    ;                  
 
   xtf = cp5.addTextfield("xfreqt")
     .setPosition(h+o, freqOffset+o*2)
-      .setSize(tw, 20)
-          .setAutoClear(false)
-            .setLabel("frequency")
-              ;
+    .setSize(tw, 20)
+    .setAutoClear(false)
+    .setLabel("frequency")
+    ;
   xtf.setValue(nf(xfreq, 2, 2));
 
   int phaseOffset = int(freqOffset+o*2.75);
@@ -230,59 +238,61 @@ void setupControls() {
   //PHASE
   /*
   cp5.addTextlabel("PHASE")
-    .setText("PHASE")
-      .setPosition(h+o/2, phaseOffset)
-        .setColorValue(color(255))
-          .setFont(font)
-            ;
-*/
+   .setText("PHASE")
+   .setPosition(h+o/2, phaseOffset)
+   .setColorValue(color(255))
+   .setFont(font)
+   ;
+   */
   xtp = cp5.addTextfield("xphaset")
     .setPosition(h+o, phaseOffset+o)
-      .setSize(int(tw*.25), 20)
-          .setAutoClear(false)
-            .setLabel("phase")
-              ;
+    .setSize(int(tw*.25), 20)
+    .setAutoClear(false)
+    .setLabel("phase")
+    ;
   xtp.setValue(nf(xphase, 3, 0));
 
-  tphase = cp5.addToggle("xPhaseSweep")
-    .setPosition(h+o+tw*.8, phaseOffset+o)
-      .setSize(20, 20)
-        .setLabel("sweep")
-          ;
 
-  ps = cp5.addNumberbox("xphaseShift")
+  xps = cp5.addNumberbox("xphaseShift")
     .setPosition(h+o+tw*.35, phaseOffset+o)
-      .setSize(int(tw*.35), 20)
-        .setLabel("speed")
-          .setRange(0, 180)
-            .setMultiplier(0.01) // set the sensitifity of the numberbox
-              //.setDirection(cp5.HORIZONTAL)
-              ;
-  ps.setValue(xphaseShift);
-  updatePhase();
-
+    .setSize(int(tw*.35), 20)
+    .setLabel("sweep")
+    .setRange(0, 180)
+    .setMultiplier(0.01) // set the sensitifity of the numberbox
+    ;
+  xps.setValue(xphaseShift);
 
   ytf = cp5.addTextfield("yfreqt")
     .setPosition(h+o*2+tw, freqOffset+o*2)
-      .setSize(tw, 20)
-          .setAutoClear(false)
-            .setLabel("frequency")
-              ;
+    .setSize(tw, 20)
+    .setAutoClear(false)
+    .setLabel("frequency")
+    ;
   ytf.setValue(nf(yfreq, 2, 2));
 
 
-  
-  /*
+
+
   ytp = cp5.addTextfield("yphaset")
-   .setPosition(h+o*2+tw, freqOffset+o*4.5)
-   .setSize(int(tw*.5), 20)
-   .setFont(font)
-   .setAutoClear(false)
-   .setLabel("y - phase")
-   ;
-   ytp.setValue(nf(yphase, 1, 2));
-   
-   
+    .setPosition(h+o*2+tw, phaseOffset+o)
+    .setSize(int(tw*.25), 20)
+    .setAutoClear(false)
+    .setLabel("phase")
+    ;
+  ytp.setValue(nf(yphase, 1, 2));
+
+  yps = cp5.addNumberbox("yphaseShift")
+    .setPosition(h+o*2+tw+tw*.35, phaseOffset+o)
+    .setSize(int(tw*.35), 20)
+    .setLabel("sweep")
+    .setRange(0, 180)
+    .setMultiplier(0.01) // set the sensitifity of the numberbox
+    ;
+  yps.setValue(yphaseShift);
+  updatePhase();
+
+
+  /*
    cp5.addToggle("yPhaseSweep")
    .setPosition(h+o*2+tw+tw*.65, freqOffset+o*4.5)
    .setSize(20, 20)
@@ -294,14 +304,14 @@ void setupControls() {
   // WAVE TABLE
   xd = cp5.addScrollableList("xwaved")
     .setPosition(h+o, freqOffset+o)
-      .setSize(tw, 200);
+    .setSize(tw, 200);
 
   ;
   dropdownWaveList(xd);
 
   yd = cp5.addScrollableList("ywaved")
     .setPosition(h+o*2+tw, freqOffset+o)
-      .setSize(tw, 200);
+    .setSize(tw, 200);
 
   ;
   dropdownWaveList(yd);
@@ -309,21 +319,19 @@ void setupControls() {
   //settings dropdown
   dSettings = cp5.addScrollableList("dSettings")
     .setPosition(h+o*2+tw, settingsOffset+o)
-      .setSize(tw, 200)
-        .setBarHeight(20)
-          .setItemHeight(20)
-            .setLabel("Settings")
-              .setVisible(false)
-                ;
+    .setSize(tw, 200)
+    .setBarHeight(20)
+    .setItemHeight(20)
+    .setLabel("Settings")
+    .setVisible(false)
+    ;
   dSettings.setColorActive(color(255, 128));
   dSettings.setBackgroundColor(color(190));
 }
 
-void dropdownWaveList(ScrollableList ddl){
+void dropdownWaveList(ScrollableList ddl) {
   ddl.setBackgroundColor(color(190));
-  //ddl.setColorBackground(color(60));
   ddl.setColorActive(color(255, 128));
-  //ddl.captionLabel().set("Wave Type");
   ddl.setBarHeight(20);
   ddl.setItemHeight(20);
   ddl.addItems(waveTypesList);
@@ -350,7 +358,9 @@ void controlEvent(ControlEvent theEvent) {
     xtp.setFocus(false);
     updatePhase();
   } else if (theEvent.getName() == "yphaset") {
-    yphase = float(ytp.getStringValue())/360;
+    //yphase = float(ytp.getStringValue())/360;
+    yphase = int(ytp.getStringValue());
+    ytp.setFocus(false);
     updatePhase();
   } else if (theEvent.getName() == "fmint") {
     freqMin = int(fmint.getStringValue());
@@ -395,9 +405,8 @@ void saveSelected(File selection) {
     "displayScope="+str(displayScope), 
     "xyMode="+str(xyMode), 
     "glowScope="+str(glowScope)
-    };
-    //saveStrings("data/settings.txt", sSettings);
-    saveStrings(selection+".txt", sSettings);
+  };
+  saveStrings(selection+".txt", sSettings);
   settingsDir = selection.getParent();
   curSetting = selection.getName()+".txt";
   updateSettings();
@@ -463,8 +472,8 @@ void showCursor() {
 
 void showGrid() {
   for (float i=freqMin; i<freqMax; i+= ( (freqMax-freqMin)/10)) {
-    float x = map(i, freqMin, freqMax, o*2, h);
-    float y = map(i, freqMin, freqMax, o*2, h);
+    float x = floor(map(i, freqMin, freqMax, o*2, h));
+    float y = floor(map(i, freqMin, freqMax, o*2, h));
 
     // channel 1
     stroke(dc);
@@ -497,7 +506,7 @@ void showGrid() {
   fill(xc);
   if (xyMode)
     fill(dc);
-  text("x - frequency", h/2, o*.5);
+  text("x - frequency", floor(h/2), floor(o*.5));
 
   fill(yc);
   if (xyMode)
@@ -506,7 +515,7 @@ void showGrid() {
   pushMatrix();
   translate(o+5, 0);
   rotate(radians(90));
-  text("y - frequency", h/2, o*.5);
+  text("y - frequency", floor(h/2), floor(o*.5));
   popMatrix();
 }
 
@@ -531,7 +540,7 @@ void showScope() {
   scope.beginDraw();
   scope.smooth();
   scope.noStroke();
-  if (glowScope) {
+  if (glowScope && xyMode) {
     scope.fill(0, 32, 0, 50);
   } else {
     scope.background(0, 32, 0);
@@ -539,9 +548,7 @@ void showScope() {
   scope.rect(0, 0, scope.width, scope.height);
   scope.noFill();
   scope.strokeWeight(1);
-  //scope.stroke(255);
-  //scope.noFill();
-  //line(mouseX,mouseY,pmouseX,pmouseY);
+
   scope.pushMatrix();
   scope.translate(g/2, g/2);
   if (xyMode) {
@@ -568,17 +575,6 @@ void showScope() {
       scope.vertex(x, lAudio);
     }
     scope.endShape();
-    
-    /*
-    //WAVE FORM = neat but only form
-      for( int i = 0; i < g; ++i )
-  {
-    float x = map(i,0,g,-g/2,g/2);
-    float y = map(i,0,g,0,1);
-    scope.point(x,0+g/2*xwave.getWaveform().value(y));
-    //scope.point( i, g/2 - (g*0.49) * xwave.getWaveform().value( (float)i / g ) );
-  }
-    */
     scope.stroke(yc);
     scope.beginShape();
     for (int i = 0; i < outyp.length; i++)
@@ -605,18 +601,29 @@ void showScope() {
   image(scope, h+o, h-o/2-g, g, g);
 }
 
+void mousePressed() {
+  if (mouseX < h)
+    changeFreq = true;
+}
+
+void mouseReleased() {
+  changeFreq = false;
+}
+
 void mouseDragged() {
   //showCursor();
-  float mouseXLim = constrain(mouseX, o*2, h);
-  float mouseYLim = constrain(mouseY, o*2, h);
-  if (mouseX < h) {
-    if (keyPressed && keyCode == 16) {
-      //xwave.setPhase(map(mouseXLim, o*2, h, 0,1));
-      //ywave.setPhase(map(mouseYLim, o*2, h-o, 0,1));
-    } else {
-      xfreq = map(mouseXLim, o*2, h, freqMin, freqMax);
-      yfreq = map(mouseYLim, o*2, h, freqMin, freqMax);
-      updateFreq();
+  if (changeFreq) {
+    float mouseXLim = constrain(mouseX, o*2, h);
+    float mouseYLim = constrain(mouseY, o*2, h);
+    if (mouseX < h) {
+      if (keyPressed && keyCode == 16) {
+        //xwave.setPhase(map(mouseXLim, o*2, h, 0,1));
+        //ywave.setPhase(map(mouseYLim, o*2, h-o, 0,1));
+      } else {
+        xfreq = map(mouseXLim, o*2, h, freqMin, freqMax);
+        yfreq = map(mouseYLim, o*2, h, freqMin, freqMax);
+        updateFreq();
+      }
     }
   }
 }
@@ -635,10 +642,6 @@ void liveUpdates() {
       xfreq = float(xtf.getText());
       //updatePhase();
       xwave.setFrequency(xfreq);
-      //xwave.reset();
-      //ywave.reset();
-      //xwave.setPhase(map(constrain(xphase, 0, 360), 0, 360, 0, 1));
-      //ywave.setPhase(0);
       selInput = 1;
       updateBands();
     }
@@ -649,8 +652,8 @@ void liveUpdates() {
       selInput = 2;
       updateBands();
     }
-  }else if(xtp.isActive()){
-    if(xtp.getText() != ""){
+  } else if (xtp.isActive()) {
+    if (xtp.getText() != "") {
       xphase = float(xtp.getText());
       xwave.setPhase(map(constrain(xphase, 0, 360), 0, 360, 0, 1));
     }
@@ -658,7 +661,6 @@ void liveUpdates() {
 }
 
 void updateBands() {
-  //    println(xwave.getPhase());
   for (int i = 0; i < out.bufferSize (); i++)
   {
     float lAudio = out.left.get(i)*amp;
@@ -670,19 +672,21 @@ void updateBands() {
 
 void updatePhase() {
   xwave.setPhase(map(constrain(xphase, 0, 360), 0, 360, 0, 1));
-  //ywave.setPhase(0);
-  // ywave.patch(xwave.phase);
   xtp.setValue(nf(int(xphase), 1, 0));
-  ps.setBroadcast(false);
-  ps.setValue(xphaseShift);
-  ps.setBroadcast(true);
+  ywave.setPhase(map(constrain(yphase, 0, 360), 0, 360, 0, 1));
+  ytp.setValue(nf(int(yphase), 1, 0));
+  xps.setBroadcast(false);
+  xps.setValue(xphaseShift);
+  xps.setBroadcast(true);
   updateBands();
-  //ywave.setPhase(yphase);
-  //ytp.setValue(nf(yphase*360, 1, 0));
 }
 
 void keyPressed() {
   println(keyCode);
+
+  freqMod = .01;
+  if (shifted)
+    freqMod = .25;
 
   if (!xtf.isActive() && !ytf.isActive() && !xtp.isActive() && !fmint.isActive() && !fmaxt.isActive()) {
     switch(keyCode) {
@@ -709,6 +713,9 @@ void keyPressed() {
         xyMode = true;
       }
       break;
+    case 16: // SHIFT
+      shifted = true;
+      break;
     default: 
       break;
     }
@@ -716,6 +723,12 @@ void keyPressed() {
 
   if (keyCode == 9) {
     cycleInputs();
+  }
+}
+
+void keyReleased() {
+  if (keyCode == 16) {
+    shifted = false;
   }
 }
 
