@@ -17,8 +17,6 @@ float yfreq  = 80;
 float xphase = 90;
 float yphase = 00;
 float amp;
-// keep track of the current Frequency so we can display it
-Frequency  currentFreq;
 
 float freqMin = 20;
 float freqMax = 440;
@@ -37,6 +35,7 @@ color dc = color(150);
 //SCOPE
 PGraphics scope;
 
+boolean pauseScope = false;
 boolean displayScope = true;
 boolean glowScope = true;
 boolean xyMode = true;
@@ -48,11 +47,12 @@ float yphaseShift = .00;
 int cSize = 8;
 
 //CONTROLS
+String fontName = "Monaco";
 import controlP5.*;
 ControlP5 cp5;
 Textfield xtf, ytf, xtp, ytp, fmint, fmaxt;
 ScrollableList xd, yd, dSettings;
-Toggle tphase, tscope, txy, tglow;
+Toggle tphase, tscope, txy, tpause;
 Button bLoad, bSave;
 Numberbox xps, yps;
 List waveTypesList = Arrays.asList("SINE", "SQUARE", "TRIANGLE", "SAW", "QUARTERPULSE");
@@ -68,15 +68,13 @@ String curSetting;
 int dMatch = 0;
 
 void setup() {
-  //size(900, 600);
-  fullScreen();
+  fullScreen(P3D);
   o = border;
   w = width-o;
   h = height-o;
   g = floor(width*.3);
   println(g);
   minim = new Minim(this);
-
 
   out = minim.getLineOut(Minim.STEREO, 1024);
   outxp = new float[out.bufferSize()];
@@ -88,8 +86,6 @@ void setup() {
   ywave.patch(ypan).patch(out);
 
   lwave = new Oscil( 0.01, 1, Waves.SINE );  
-  //  xfreq = int(random(freqMin, freqMax));
-  //  yfreq = int(random(freqMin, freqMax));
   xwave.setFrequency(xfreq);
   ywave.setFrequency(yfreq);
   amp = g*.48;
@@ -107,8 +103,13 @@ void draw() {
   background(0);
   showGrid();
   showFreq();
-  if (displayScope)
+  if (displayScope) {
     showScope();
+    if (!pauseScope) {
+      updateBands();
+      liveUpdates();
+    }
+  }
   if (!xtp.isFocus() && !ytp.isFocus()) {
     if (xphaseShift > 0) {
       xphase += xphaseShift;
@@ -124,15 +125,13 @@ void draw() {
       updatePhase();
     }
   }
-  liveUpdates();
 }
-
 
 
 void setupControls() {
   cp5 = new ControlP5(this);
-  PFont font = createFont("Monaco", 14);
-  PFont labelFont = createFont("Monaco", 20);
+  PFont font = createFont(fontName, 14);
+  PFont labelFont = createFont(fontName, 20);
 
   int tw = 100; 
 
@@ -195,20 +194,18 @@ void setupControls() {
     .setLabel("show")
     ;
 
-  txy = cp5.addToggle("xyMode")
+
+  tpause = cp5.addToggle("pauseScope")
     .setPosition(h+o*2+tw*1.4, gridOffset+o)
+    .setSize(20, 20)
+    .setLabel("pause")
+    ;
+
+  txy = cp5.addToggle("xyMode")
+    .setPosition(h+o*2+tw*1.8, gridOffset+o)
     .setSize(20, 20)
     .setLabel("xy-Mode")
     ;
-
-  tglow = cp5.addToggle("glowScope")
-    .setPosition(h+o*2+tw*1.8, gridOffset+o)
-    .setSize(20, 20)
-    .setLabel("glow")
-    .setVisible(false)
-    ;
-
-
 
   int freqOffset = int(gridOffset+o*3);
 
@@ -235,15 +232,6 @@ void setupControls() {
 
   int phaseOffset = int(freqOffset+o*2.75);
 
-  //PHASE
-  /*
-  cp5.addTextlabel("PHASE")
-   .setText("PHASE")
-   .setPosition(h+o/2, phaseOffset)
-   .setColorValue(color(255))
-   .setFont(font)
-   ;
-   */
   xtp = cp5.addTextfield("xphaset")
     .setPosition(h+o, phaseOffset+o)
     .setSize(int(tw*.25), 20)
@@ -270,9 +258,6 @@ void setupControls() {
     ;
   ytf.setValue(nf(yfreq, 2, 2));
 
-
-
-
   ytp = cp5.addTextfield("yphaset")
     .setPosition(h+o*2+tw, phaseOffset+o)
     .setSize(int(tw*.25), 20)
@@ -291,29 +276,17 @@ void setupControls() {
   yps.setValue(yphaseShift);
   updatePhase();
 
-
-  /*
-   cp5.addToggle("yPhaseSweep")
-   .setPosition(h+o*2+tw+tw*.65, freqOffset+o*4.5)
-   .setSize(20, 20)
-   ;
-   */
-
-
-
   // WAVE TABLE
   xd = cp5.addScrollableList("xwaved")
     .setPosition(h+o, freqOffset+o)
-    .setSize(tw, 200);
-
-  ;
+    .setSize(tw, 200)
+    ;
   dropdownWaveList(xd);
 
   yd = cp5.addScrollableList("ywaved")
     .setPosition(h+o*2+tw, freqOffset+o)
-    .setSize(tw, 200);
-
-  ;
+    .setSize(tw, 200)
+    ;
   dropdownWaveList(yd);
 
   //settings dropdown
@@ -358,7 +331,6 @@ void controlEvent(ControlEvent theEvent) {
     xtp.setFocus(false);
     updatePhase();
   } else if (theEvent.getName() == "yphaset") {
-    //yphase = float(ytp.getStringValue())/360;
     yphase = int(ytp.getStringValue());
     ytp.setFocus(false);
     updatePhase();
@@ -370,27 +342,15 @@ void controlEvent(ControlEvent theEvent) {
     fmaxt.setFocus(false);
   } else if  (theEvent.getName() == "dSettings") {
     int setSel = int(theEvent.getValue());
-    //println(settingsList[setSel]);
-    //if(curSetting.equals(settingsList[setSel])){
     File lSet = new File(settingsDir+"/"+settingsList[setSel]);
     loadSelected(lSet);
-    //}
   }
-  /*
-  if(theEvent.isAssignableFrom(Textfield.class)) {
-   println("controlEvent: accessing a string from controller '"
-   +theEvent.getName()+"': "
-   +theEvent.getStringValue()
-   );
-   }
-   */
 }
-
 
 void saveSettings() {
   selectOutput("Store settings:", "saveSelected");
-  //settings {rmin, rmax, xfreq, yfreq, xwavetype, ywavetype, phase, xphaseShift}
 }
+
 void saveSelected(File selection) {
   String[] sSettings = {
     "freqMin="+nf(freqMin, 1, 2), 
@@ -401,10 +361,11 @@ void saveSelected(File selection) {
     "ywavetype="+nf(int(yd.getValue()), 1), 
     "xphase="+nf(xphase, 1, 2), 
     "xphaseShift="+nf(xphaseShift, 1, 3), 
-    "xPhaseSweep="+str(xPhaseSweep), 
+    "yphase="+nf(yphase, 1, 2), 
+    "yphaseShift="+nf(yphaseShift, 1, 3), 
     "displayScope="+str(displayScope), 
-    "xyMode="+str(xyMode), 
-    "glowScope="+str(glowScope)
+    "pauseScope="+str(pauseScope), 
+    "xyMode="+str(xyMode)
   };
   saveStrings(selection+".txt", sSettings);
   settingsDir = selection.getParent();
@@ -425,15 +386,15 @@ void loadSelected(File selection) {
   yd.setValue(float(split(lSettings[5], "=")[1]));
   xphase = float(split(lSettings[6], "=")[1]);
   xphaseShift = float(split(lSettings[7], "=")[1]);
-  tphase.setValue(boolean(split(lSettings[8], "=")[1]));
-  tscope.setValue(boolean(split(lSettings[9], "=")[1]));
-  txy.setValue(boolean(split(lSettings[10], "=")[1]));
-  tglow.setValue(boolean(split(lSettings[11], "=")[1]));
+  yphase = float(split(lSettings[8], "=")[1]);
+  yphaseShift = float(split(lSettings[9], "=")[1]);
+  tscope.setValue(boolean(split(lSettings[10], "=")[1]));
+  tpause.setValue(boolean(split(lSettings[11], "=")[1]));
+  txy.setValue(boolean(split(lSettings[12], "=")[1]));
   updateFreq();
   updatePhase();
   settingsDir = selection.getParent();
   curSetting = selection.getName();
-  //println(curSetting);
   updateSettings();
 }
 
@@ -551,20 +512,22 @@ void showScope() {
 
   scope.pushMatrix();
   scope.translate(g/2, g/2);
+
+  if (!pauseScope) {
+  }
   if (xyMode) {
     scope.stroke(oc);
     scope.beginShape();
 
-    for (int i = 0; i < out.bufferSize (); i++)
+    for (int i = 0; i < outxp.length; i++)
     {
       float x = map(i, 0, out.bufferSize(), -amp/2, amp/2);
       float y = map(i, 0, out.bufferSize(), -amp/2, amp/2);
-      float lAudio = out.left.get(i)*amp;
-      float rAudio = out.right.get(i)*amp;
+      float lAudio = outxp[i];
+      float rAudio = outyp[i];
       scope.vertex(lAudio, rAudio);
     }
     scope.endShape();
-    updateBands();
   } else {
     scope.stroke(xc);
     scope.beginShape();
@@ -611,7 +574,6 @@ void mouseReleased() {
 }
 
 void mouseDragged() {
-  //showCursor();
   if (changeFreq) {
     float mouseXLim = constrain(mouseX, o*2, h);
     float mouseYLim = constrain(mouseY, o*2, h);
@@ -633,7 +595,6 @@ void updateFreq() {
   xtf.setValue(nf(xfreq, 2, 2));
   ywave.setFrequency(yfreq);
   ytf.setValue(nf(yfreq, 2, 2));
-  updateBands();
 }
 
 void liveUpdates() {
@@ -643,14 +604,12 @@ void liveUpdates() {
       //updatePhase();
       xwave.setFrequency(xfreq);
       selInput = 1;
-      updateBands();
     }
   } else if (ytf.isActive()) {
     if (float(ytf.getText()) > 0) {
       yfreq = float(ytf.getText());
       ywave.setFrequency(yfreq);
       selInput = 2;
-      updateBands();
     }
   } else if (xtp.isActive()) {
     if (xtp.getText() != "") {
@@ -678,7 +637,6 @@ void updatePhase() {
   xps.setBroadcast(false);
   xps.setValue(xphaseShift);
   xps.setBroadcast(true);
-  updateBands();
 }
 
 void keyPressed() {
@@ -706,23 +664,33 @@ void keyPressed() {
       yfreq-=freqMod;
       updateFreq();
       break;
-    case 88: // 'x'
+    case 88: // x
       if (xyMode) {
         xyMode = false;
+        txy.setValue(false);
       } else {
         xyMode = true;
+        txy.setValue(true);
+      }
+      break;
+    case 80: // p
+      if (pauseScope) {
+        pauseScope = false;
+        tpause.setValue(false);
+      } else {
+        pauseScope = true;
+        tpause.setValue(true);
       }
       break;
     case 16: // SHIFT
       shifted = true;
       break;
+    case 9:
+      cycleInputs();
+      break;
     default: 
       break;
     }
-  }
-
-  if (keyCode == 9) {
-    cycleInputs();
   }
 }
 
