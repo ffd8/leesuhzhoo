@@ -1,5 +1,4 @@
 # leesuhzhoo
-A tool for exploring Lissajous patterns on an oscilloscope
 
 ### Background
 Developed in Processing, using a 2D slider as an intuitive way to discover ideal frequency ratio's for Lissajous patterns. Initially a gift for Stefanie Bräuer to reverse engineer Lissajous patterns in support of her PhD on early experimental film makers who used the oscilloscope (Mary Ellen Bute, Hy Hirsh, Norman McLaren) – it's now going open source for others to play with and enjoy! 
@@ -16,7 +15,7 @@ Runs in Processing 3.3.6, with the following library dependences:
 ### Usage
 Works fine digitally, but ideally hooked up to an analog oscilloscope using your headphone jack and a 1/8" to RCA cable, feeding the left and right audio to the X and Y inputs of the scope using RCA » BNC adaptors.
 
-View demonstration video:
+Demonstration video:
 
 [<img src="https://i.imgur.com/U6JkPv4.png" width="320px">](https://vimeo.com/254942204)
 
