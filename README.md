@@ -16,6 +16,8 @@ Runs in Processing 3.3.6, with the following library dependences:
 ### Usage
 Works fine digitally, but ideally hooked up to an analog oscilloscope using your headphone jack and a 1/8" to RCA cable, feeding the left and right audio to the X and Y inputs of the scope using RCA » BNC adaptors.
 
+View demonstration video:
+
 [<img src="https://i.imgur.com/U6JkPv4.png" width="320px">](https://vimeo.com/254942204)
 
 Find an ideal frequency relationship by dragging the circle anywhere within the grid.<br>
