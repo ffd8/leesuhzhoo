@@ -138,7 +138,7 @@ void setupControls() {
   // SETTINGS
   int settingsOffset = int(o);
   cp5.addTextlabel("SETTINGS")
-    .setText("SETTINGS")
+    .setText("LEESUHZHOO v.1")
     .setPosition(h+o/2, settingsOffset)
     .setColorValue(color(255))
     .setFont(font)
@@ -155,7 +155,7 @@ void setupControls() {
     .setLabel("load")
     ;
 
-  int gridOffset = int(o*3);
+  int gridOffset = int(o*3.5);
 
   cp5.addTextlabel("GRID")
     .setText("RANGE")
